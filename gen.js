@@ -135,7 +135,7 @@ async function interact(page, vw) {
 		htmls[vp.name] = docHtml;
 		// klase iz HTML-a (potpis)
 		for (const m of docHtml.matchAll(/\sclass=(["'])(.*?)\1/gs)) m[2].split(/\s+/).forEach(c => c && htmlClasses.add(c));
-		for (const m of docHtml.matchAll(/<([a-zA-Z][a-zA-Z0-9-]*)[\s>\/]/g)) htmlTags.add(m[1].toLowerCase());
+		for (const m of docHtml.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '').matchAll(/<([a-zA-Z][a-zA-Z0-9-]*)[\s>\/]/g)) htmlTags.add(m[1].toLowerCase());
 		// vanjske CSS datoteke koje treba podijeliti
 		const found = await page.evaluate(() => [...document.querySelectorAll('link[rel=stylesheet][href], link[rel=preload][as=style][href]')].filter(l => !l.hasAttribute('data-no-optimize') && l.media !== 'print' && /\/litespeed\/css\/|\.css/.test(l.href)).map(l => ({ id: l.id || '', href: l.href })));
 		for (const f of found) {
