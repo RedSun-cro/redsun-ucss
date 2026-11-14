@@ -34,6 +34,7 @@ async function run(br, variant, vp, mode, blockRe, withMenu) {
 	await p.waitForTimeout(1500); await p.keyboard.press('Shift'); await p.waitForTimeout(2500);
 	const h0 = await p.evaluate(() => document.documentElement.scrollHeight);
 	for (let y = 0; y < h0; y += 500) { await p.evaluate(v => scrollTo(0, v), y); await p.waitForTimeout(70); }
+	await p.evaluate(() => Promise.race([Promise.all([...document.images].filter(i => !i.complete).map(i => new Promise(r => { i.addEventListener('load', r); i.addEventListener('error', r); }))), new Promise(r => setTimeout(r, 8000))]));
 	await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(2500);
 	const info = await p.evaluate(() => {
 		const els = [...document.body.querySelectorAll('*')];
@@ -79,16 +80,18 @@ function pdiff(A, B, name) {
 			let dAB = diffIdx(A, B);
 			const r = { variant, vp: vp.n, applied: /rs-ucss: \d/.test(B.comment) && !/preskočeno/.test(B.comment), skipped: B.comment.includes('preskočeno') ? B.comment : '', hA: A.info.h, hB: B.info.h, elements: A.info.n, px: pdiff(A.shot, B.shot, `${slug}_${variant}_${vp.n}`), menuPx: pdiff(A.menu, B.menu, `${slug}_${variant}_${vp.n}_menu`) };
 			let C = null;
-			const needNoise = dAB === null || dAB.length > 0 || (r.px !== null && r.px > 1.5) || (r.menuPx !== null && r.menuPx > 0.5);
+			const needNoise = dAB === null || dAB.length > 0 || Math.abs(r.hA - r.hB) > 2 || (r.px !== null && r.px > 1.5) || (r.menuPx !== null && r.menuPx > 0.5);
 			if (needNoise) {
 				// šum (animacije, nasumični elementi, lijeno učitavanje): isti puni CSS još jednom
 				C = await run(br, variant, vp, 'off', blockRe, true);
 				r.noise = pdiff(A.shot, C.shot, `${slug}_${variant}_${vp.n}_noise`); r.menuNoise = pdiff(A.menu, C.menu, `${slug}_${variant}_${vp.n}_menunoise`);
+				r.hC = C.info.h;
 				const dAC = diffIdx(A, C); if (dAB && dAC) { const noisy = new Set(dAC); r.noisyEls = dAC.length; dAB = dAB.filter(i => !noisy.has(i)); }
 			}
 			const mism = dAB === null ? -1 : dAB.length;
 			r.layoutDiff = mism; r.ex = (dAB || []).slice(0, 5).map(i => A.info.label[i] + ' ' + A.info.sig[i] + ' -> ' + B.info.sig[i]);
-			const layoutOk = r.applied && Math.abs(r.hA - r.hB) <= 2 && mism >= 0 && mism <= Math.max(3, A.info.n * 0.003);
+			const hOk = Math.abs(r.hA - r.hB) <= 2 || (r.hC !== undefined && Math.abs(r.hA - r.hC) > 2 && Math.abs(r.hA - r.hB) <= Math.abs(r.hA - r.hC) + 2) || (r.hC !== undefined && Math.abs(r.hC - r.hB) <= 2);
+			const layoutOk = r.applied && hOk && mism >= 0 && mism <= Math.max(3, A.info.n * 0.003);
 			const pxOk = r.px === null || r.px <= 1.5 || (r.noise != null && r.px <= r.noise + 1.5);
 			const menuOk = r.menuPx === null || r.menuPx <= 0.5 || (r.menuNoise != null && r.menuPx <= r.menuNoise + 0.5);
 			r.ok = layoutOk && pxOk && menuOk;
