@@ -2,11 +2,11 @@
 const { execFileSync } = require('child_process'); const put = require('./put');
 const TOKEN = process.env.RS_UCSS_TOKEN; if (!TOKEN) { console.error('nema RS_UCSS_TOKEN'); process.exit(1); }
 const API = 'https://www.redsun.hr/wp-admin/admin-ajax.php';
-const post = async (a) => (await fetch(API, { method: 'POST', body: new URLSearchParams({ t: TOKEN, ...a }) })).json();
+const post = (a) => put.post({ t: TOKEN, ...a });
 (async () => {
-	const q = await (await fetch(API + '?action=rs_ucss_queue&t=' + encodeURIComponent(TOKEN))).json();
+	const q = await put.post({ action: 'rs_ucss_queue', t: TOKEN });
 	const force = (process.env.RS_UCSS_PATHS || '').split(/[\s,]+/).filter(Boolean);
-	const todo = [...new Set([...force, ...Object.keys(q.requests || {}), ...Object.keys(q.stale || {})])];
+	const todo = force.length ? [...new Set(force)] : [...new Set([...Object.keys(q.requests || {}), ...Object.keys(q.stale || {})])]; // ručno zadane putanje = samo one
 	console.log('Stranice za obnovu:', todo.length ? todo.join(' ') : 'nema');
 	let fail = 0;
 	for (const path of todo) {

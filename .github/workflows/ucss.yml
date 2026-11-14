@@ -22,7 +22,7 @@ jobs:
         id: q
         env: { RS_UCSS_TOKEN: '${{ secrets.RS_UCSS_TOKEN }}' }
         run: |
-          N=$(curl -s "https://www.redsun.hr/wp-admin/admin-ajax.php?action=rs_ucss_queue&t=$RS_UCSS_TOKEN" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log(Object.keys(j.requests||{}).length+Object.keys(j.stale||{}).length)})")
+          N=$(curl -s "https://www.redsun.hr/wp-admin/admin-ajax.php?action=rs_ucss_queue&t=$RS_UCSS_TOKEN" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s);console.log(Object.keys(j.requests||{}).length+Object.keys(j.stale||{}).length)}catch(e){console.log(1)}})")
           [ -n "${{ github.event.inputs.paths }}" ] && N=1
           echo "n=$N" >> $GITHUB_OUTPUT
       - if: steps.q.outputs.n != '0'
