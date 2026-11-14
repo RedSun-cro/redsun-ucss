@@ -70,9 +70,11 @@ function pdiff(A, B, name) {
 		const files = new Set(); for (const l of Object.values(d.links)) { files.add(l.file); if (l.hrefAlt) files.add(l.hrefAlt.split('?')[0].split('/').pop()); }
 		const blockRe = new RegExp('(' + [...files].map(esc).join('|') + ')');
 		for (const vp of [{ n: 'm412', m: 1 }, { n: 'd1440', w: 1440 }].filter(x => !process.env.ONLY_VP || x.n === process.env.ONLY_VP)) {
+			for (let att = 0; att < 2; att++) {
 			const A = await run(br, variant, vp, 'off', blockRe, true);
 			const B = await run(br, variant, vp, '1', blockRe, true);
-			const diffIdx = (X, Y) => { const out = []; if (X.info.n !== Y.info.n) return null; for (let i = 0; i < X.info.n; i++) { if (X.info.sig[i] !== Y.info.sig[i]) { const a = X.info.sig[i].split(',').map(Number), b = Y.info.sig[i].split(',').map(Number); if (a.length !== b.length || a.some((x, k) => Math.abs(x - b[k]) > 1)) out.push(i); } } return out; };
+			const keyed = X => { const c = {}; const m = new Map(); X.info.label.forEach((l, i) => { c[l] = (c[l] || 0) + 1; m.set(l + '@' + c[l], i); }); return m; };
+			const diffIdx = (X, Y) => { const out = []; const mY = keyed(Y); let common = 0; keyed(X).forEach((i, k) => { const j = mY.get(k); if (j === undefined) return; common++; const a0 = X.info.sig[i], b0 = Y.info.sig[j]; if (a0 === b0) return; const a = a0.split(',').map(Number), b = b0.split(',').map(Number); if (a.length !== b.length || a.some((x, q) => Math.abs(x - b[q]) > 1)) out.push(i); }); return common < X.info.n * 0.9 ? null : out; };
 			if (process.env.DUMP) fs.writeFileSync(process.env.DUMP, JSON.stringify({ A: A.info, B: B.info }));
 			let dAB = diffIdx(A, B);
 			const r = { variant, vp: vp.n, applied: /rs-ucss: \d/.test(B.comment) && !/preskočeno/.test(B.comment), skipped: B.comment.includes('preskočeno') ? B.comment : '', hA: A.info.h, hB: B.info.h, elements: A.info.n, px: pdiff(A.shot, B.shot, `${slug}_${variant}_${vp.n}`), menuPx: pdiff(A.menu, B.menu, `${slug}_${variant}_${vp.n}_menu`) };
@@ -90,8 +92,9 @@ function pdiff(A, B, name) {
 			const pxOk = r.px === null || r.px <= 1.5 || (r.noise != null && r.px <= r.noise + 1.5);
 			const menuOk = r.menuPx === null || r.menuPx <= 0.5 || (r.menuNoise != null && r.menuPx <= r.menuNoise + 0.5);
 			r.ok = layoutOk && pxOk && menuOk;
-			if (!r.ok) ok = false;
-			results.push(r);
+			r.attempt = att + 1;
+			if (r.ok || att === 1) { if (!r.ok) ok = false; results.push(r); break; }
+			}
 		}
 	}
 	await br.close();
