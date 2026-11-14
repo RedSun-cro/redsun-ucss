@@ -19,7 +19,8 @@ const post = (a) => put.post({ t: TOKEN, ...a });
 			let res = verify(); if (!res.ok) { await new Promise(r => setTimeout(r, 20000)); res = verify(); } // jedan ponovni pokušaj (prolazni šum)
 			if (res.ok) { await post({ action: 'rs_ucss_approve', path, ok: '1' }); console.log('OK', path); }
 			else {
-				const why = (res.results || []).filter(r => !r.ok).map(r => `${r.variant} ${r.vp} layout ${r.layoutDiff} px ${r.px} h ${r.hA}/${r.hB}`).join('; ') || res.error || '';
+				console.log(JSON.stringify(res));
+				const why = (res.results || []).filter(r => !r.ok).map(r => `${r.variant} ${r.vp}${r.applied ? '' : ' NIJE PRIMIJENJENO ' + (r.skipped || '')} layout ${r.layoutDiff} px ${r.px}/${r.noise ?? '-'} izbornik ${r.menuPx}/${r.menuNoise ?? '-'} h ${r.hA}/${r.hB}`).join('; ') || res.error || '';
 				await post({ action: 'rs_ucss_approve', path, why }); console.log('PROVJERA NIJE PROŠLA', path, why); fail++;
 			}
 		} catch (e) { console.log('GREŠKA', path, e.message.slice(0, 300)); fail++; }
