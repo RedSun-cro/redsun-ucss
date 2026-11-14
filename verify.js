@@ -47,7 +47,9 @@ async function run(br, variant, vp, mode, blockRe, withMenu) {
 		const btn = await p.$(vp.m ? '.et_pb_icon_0_tb_header' : 'header .et-menu > li >> nth=0');
 		if (btn) { try { if (vp.m) await btn.click(); else await btn.hover(); await p.waitForTimeout(1500); menu = PNG.sync.read(await p.screenshot()); } catch (e) {} }
 	}
-	const comment = (html.match(/<!-- rs-ucss[^>]*-->/) || [''])[0];
+	// stanje UCSS-a iz DOM-a (zaštita hostinga ponekad zamijeni prvi odgovor, pa HTML odgovora nije pouzdan)
+	const dom = await p.evaluate(() => { let c = ''; for (const n of document.childNodes) if (n.nodeType === 8 && /rs-ucss/.test(n.nodeValue)) c = n.nodeValue; if (!c) { const w = document.createTreeWalker(document, NodeFilter.SHOW_COMMENT); while (w.nextNode()) if (/rs-ucss/.test(w.currentNode.nodeValue)) c = w.currentNode.nodeValue; } return { c, rsu: !!document.querySelector('link[id$="-rsu"], #rs-ucss-critical') }; }).catch(() => ({ c: '', rsu: false }));
+	const comment = (html.match(/<!-- rs-ucss[^>]*-->/) || [''])[0] || (dom.c ? '<!--' + dom.c + '-->' : (dom.rsu ? '<!-- rs-ucss: 0 -->' : ''));
 	await ctx.close();
 	return { info, shot, menu, comment };
 }
