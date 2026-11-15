@@ -36,6 +36,8 @@ async function retryable(q) {
 	const q = await put.post({ action: 'rs_ucss_queue', t: TOKEN });
 	const force = (process.env.RS_UCSS_PATHS || '').split(/[\s,]+/).filter(Boolean);
 	const todo = force.length ? [...new Set(force)] : [...new Set([...Object.keys(q.requests || {}), ...Object.keys(q.stale || {}), ...await retryable(q)])]; // ručno zadane putanje = samo one
+	const PRIO = ['/', '/en/', '/de/']; // naslovnice uvijek prve
+	todo.sort((a, b) => (PRIO.includes(a) ? PRIO.indexOf(a) : 99) - (PRIO.includes(b) ? PRIO.indexOf(b) : 99));
 	console.log('Stranice za obnovu:', todo.length ? todo.join(' ') : 'nema');
 	let fail = 0, left = [];
 	for (const [i, path] of todo.entries()) {
